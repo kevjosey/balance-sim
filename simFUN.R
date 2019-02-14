@@ -3,6 +3,7 @@
 ## PURPOSE: Functions for simulating and fitting causal models  ##
 ##################################################################
 
+require(cbal)
 require(CBPS)
 require(ATE)
 require(survey)

@@ -27,8 +27,8 @@ tau <- 20
 
 # Haggstrom or Setoguchi
 
-simDat <- replicate(iter, gen_data(n = n, rho = rho, tau = tau, sig2 = sig2,
-                                   y_scen = y_scen, z_scen = z_scen))
+simDat <- replicate(iter, ks_data(n = n, rho = rho, tau = tau, sig2 = sig2,
+                                  y_scen = y_scen, z_scen = z_scen))
 
 start <- Sys.time()
 

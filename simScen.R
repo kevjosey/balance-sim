@@ -59,7 +59,7 @@ clusterApply(cl, index, function(i,...) {
   z_scen <- dat$z_scen
   tau <- 20
   
-  simDat <- replicate(iter, gen_data(n = n, tau = tau, sig2 = sig2, rho = rho, 
+  simDat <- replicate(iter, ks_data(n = n, tau = tau, sig2 = sig2, rho = rho, 
                                      y_scen = y_scen, z_scen = z_scen))
   
   datFilename <- paste("E:/Dropbox (ColoradoTeam)/JoseyDissertation/Data/simData/",
