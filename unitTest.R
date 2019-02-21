@@ -9,13 +9,12 @@ set.seed(10)
 library(survey)
 
 # functions for fitting propensity scores
-library(twang)
 library(CBPS)
 library(ATE)
 library(cbal)
 
 # additional functions
-source("E:/Github/cov-bal-sim/simFUN.R")
+source("~/Github/cov-bal-sim/simFUN.R")
 
 iter <- 20
 n <- 200

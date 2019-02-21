@@ -34,13 +34,13 @@ cl <- makeCluster(3, type = "SOCK")
 clusterEvalQ(cl, {
   
   # functions for fitting propensity scores
+  library(cbal)
   library(CBPS)
   library(ATE)
   library(survey)
-  library(cbal)
   
   # additional functions
-  source("E:/Github/cov-bal-sim/simFUN.R")
+  source("~/Github/cov-bal-sim/simFUN.R")
 
 })
 
@@ -62,7 +62,7 @@ clusterApply(cl, index, function(i,...) {
   simDat <- replicate(iter, ks_data(n = n, tau = tau, sig2 = sig2, rho = rho, 
                                      y_scen = y_scen, z_scen = z_scen))
   
-  datFilename <- paste("E:/Dropbox (ColoradoTeam)/JoseyDissertation/Data/simData/",
+  datFilename <- paste("~/Dropbox (ColoradoTeam)/JoseyDissertation/Data/simData/",
                        i, n, sig2, rho, y_scen, z_scen, ".RData", sep = "_")
   save(simDat, file = datFilename)
   
@@ -70,7 +70,7 @@ clusterApply(cl, index, function(i,...) {
   
   weightsList <- sapply(idx, simFit, simDat = simDat)
   
-  weightsFilename <- paste("E:/Dropbox (ColoradoTeam)/JoseyDissertation/Data/weights/",
+  weightsFilename <- paste("~/Dropbox (ColoradoTeam)/JoseyDissertation/Data/weights/",
                            n, sig2, rho, y_scen, z_scen, ".RData", sep = "_")
   save(weightsList, file = weightsFilename)
   
@@ -91,11 +91,11 @@ clusterApply(cl, index, function(i,...) {
   coverageProb_tmp <- t(sapply(idx, simPerf, weightsList = weightsList, simDat = simDat, tau = tau, type = "coverage"))
   coverageProb <- data.frame(misc_out, coverageProb_tmp, stringsAsFactors = FALSE)
   
-  tauFilename <- paste("E:/Dropbox (ColoradoTeam)/JoseyDissertation/Data/tauHat/",
+  tauFilename <- paste("~/Dropbox (ColoradoTeam)/JoseyDissertation/Data/tauHat/",
                        n, sig2, rho, y_scen, z_scen, ".RData", sep = "_")
-  seFilename <- paste("E:/Dropbox (ColoradoTeam)/JoseyDissertation/Data/tauSE/",
+  seFilename <- paste("~/Dropbox (ColoradoTeam)/JoseyDissertation/Data/tauSE/",
                       n, sig2, rho, y_scen, z_scen, ".RData", sep = "_")
-  coverageFilename <- paste("E:/Dropbox (ColoradoTeam)/JoseyDissertation/Data/coverageProb/",
+  coverageFilename <- paste("~/Dropbox (ColoradoTeam)/JoseyDissertation/Data/coverageProb/",
                             n, sig2, rho, y_scen, z_scen, ".RData", sep = "_")
   
   save(tauHat, file = tauFilename)
