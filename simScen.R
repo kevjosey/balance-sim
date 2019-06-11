@@ -29,7 +29,7 @@ index <- index[!(index %in% remove)]
 iter <- 1000
 
 ## multicore simulation
-cl <- makeCluster(3, type = "SOCK")
+cl <- makeCluster(6, type = "SOCK")
 
 clusterEvalQ(cl, {
   
@@ -40,7 +40,7 @@ clusterEvalQ(cl, {
   library(survey)
   
   # additional functions
-  source("~/Github/cov-bal-sim/simFUN.R")
+  source("~/Github/cbal-sim/simFUN.R")
 
 })
 
@@ -60,19 +60,15 @@ clusterApply(cl, index, function(i,...) {
   tau <- 20
   
   simDat <- replicate(iter, ks_data(n = n, tau = tau, sig2 = sig2, rho = rho, 
-                                     y_scen = y_scen, z_scen = z_scen))
+                                    y_scen = y_scen, z_scen = z_scen))
   
-  datFilename <- paste("~/Dropbox (ColoradoTeam)/JoseyDissertation/Data/simData/",
+  datFilename <- paste("~/Dropbox (ColoradoTeam)/JoseyDissertation/Data/cbal/simData/",
                        i, n, sig2, rho, y_scen, z_scen, ".RData", sep = "_")
   save(simDat, file = datFilename)
   
   idx <- 1:iter # simulation iteration index
   
-  weightsList <- sapply(idx, simFit, simDat = simDat)
-  
-  weightsFilename <- paste("~/Dropbox (ColoradoTeam)/JoseyDissertation/Data/weights/",
-                           n, sig2, rho, y_scen, z_scen, ".RData", sep = "_")
-  save(weightsList, file = weightsFilename)
+  estList <- sapply(idx, simFit, tau = tau, simDat = simDat)
   
   misc_out <- data.frame(tau = rep(tau, times = iter),
                          n = rep(n, times = iter),
@@ -82,20 +78,20 @@ clusterApply(cl, index, function(i,...) {
                          z_scen = rep(z_scen, times = iter),
                          stringsAsFactors = FALSE)
 
-  tauHat_tmp <- t(sapply(idx, simPerf, weightsList = weightsList, simDat = simDat, tau = tau, type = "point"))
+  tauHat_tmp <- do.call(rbind, estList[1,])
+  tauSE_tmp <- do.call(rbind, estList[2,])
+  coverageProb_tmp <- do.call(rbind, estList[3,])
+  colnames(tauHat_tmp) <- colnames(tauSE_tmp) <- colnames(coverageProb_tmp) <- c("CBPS", "SENT", "CAL", "ENT", "BENT")
+  
   tauHat <- data.frame(misc_out, tauHat_tmp, stringsAsFactors = FALSE)
-  
-  tauSE_tmp <- t(sapply(idx, simPerf, weightsList = weightsList, simDat = simDat, tau = tau, type = "se"))
   tauSE <- data.frame(misc_out, tauSE_tmp, stringsAsFactors = FALSE)
-  
-  coverageProb_tmp <- t(sapply(idx, simPerf, weightsList = weightsList, simDat = simDat, tau = tau, type = "coverage"))
   coverageProb <- data.frame(misc_out, coverageProb_tmp, stringsAsFactors = FALSE)
   
-  tauFilename <- paste("~/Dropbox (ColoradoTeam)/JoseyDissertation/Data/tauHat/",
+  tauFilename <- paste("~/Dropbox (ColoradoTeam)/JoseyDissertation/Data/cbal/tauHat/",
                        n, sig2, rho, y_scen, z_scen, ".RData", sep = "_")
-  seFilename <- paste("~/Dropbox (ColoradoTeam)/JoseyDissertation/Data/tauSE/",
+  seFilename <- paste("~/Dropbox (ColoradoTeam)/JoseyDissertation/Data/cbal/tauSE/",
                       n, sig2, rho, y_scen, z_scen, ".RData", sep = "_")
-  coverageFilename <- paste("~/Dropbox (ColoradoTeam)/JoseyDissertation/Data/coverageProb/",
+  coverageFilename <- paste("~/Dropbox (ColoradoTeam)/JoseyDissertation/Data/cbal/coverageProb/",
                             n, sig2, rho, y_scen, z_scen, ".RData", sep = "_")
   
   save(tauHat, file = tauFilename)

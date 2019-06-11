@@ -14,7 +14,7 @@ library(ATE)
 library(cbal)
 
 # additional functions
-source("~/Github/cov-bal-sim/simFUN.R")
+source("~/Github/cbal-sim/simFUN.R")
 
 iter <- 20
 n <- 200
@@ -26,23 +26,22 @@ tau <- 20
 
 # Haggstrom or Setoguchi
 
-simDat <- replicate(iter, ks_data(n = n, rho = rho, tau = tau, sig2 = sig2,
-                                  y_scen = y_scen, z_scen = z_scen))
+simDat <- replicate(iter, ks_data(n = n, rho = rho, tau = tau, sig2 = sig2, y_scen = y_scen, z_scen = z_scen))
 
 start <- Sys.time()
 
 idx <- 1:iter
-weightsList <- sapply(idx, simFit, simDat = simDat)
+estList <- sapply(idx, simFit, tau = tau, simDat = simDat)
 
 stop <- Sys.time()
 
-tauHat_tmp <- t(sapply(idx, simPerf, weightsList = weightsList, simDat = simDat, tau = tau, type = "point"))
+tauHat_tmp <- do.call(rbind, estList[1,])
 tauHat <- apply(tauHat_tmp, 2, mean)
 
-tauSE_tmp <- t(sapply(idx, simPerf, weightsList = weightsList, simDat = simDat, tau, type = "se"))
+tauSE_tmp <- do.call(rbind, estList[2,])
 tauSE <- apply(tauSE_tmp, 2, mean)
 
-coverageProb_tmp <- t(sapply(idx, simPerf, weightsList = weightsList, simDat = simDat, tau = tau, type = "coverage"))
+coverageProb_tmp <- do.call(rbind, estList[3,])
 coverageProb <- apply(coverageProb_tmp, 2, mean)
 
 stop - start

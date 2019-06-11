@@ -76,68 +76,58 @@ ipw <- function(ps, treat, estimand = c("ATE", "ATT"), standardize = TRUE) {
 }
 
 # Fits the balancing weights using a variety of methods
-simFit <- function(idx = 1, simDat) {
+simFit <- function(idx = 1, simDat, tau) {
   
   dat <- simDat[,idx]
   formula <- as.formula(z ~ x1 + x2 + x3 + x4, env = environment(dat))
   cov_dat <- as.data.frame(dat[c("x1", "x2", "x3", "x4")])
+  y <- dat$y
+  z <- dat$z
   
   # cbps
   fit_cbps <- CBPS(formula, data = dat, ATT = 0, method = "exact", verbose = FALSE)
   wts_cbps <- fit_cbps$weights
+  design <- svydesign(ids = ~ 1, weights = ~ wts_cbps, data = data.frame(wts_cbps, dat))
+  mod_cbps <- svyglm(y ~ z, design = design, family = gaussian)
+  tau_cbps <- coef(mod_cbps)[2]
+  se_cbps <- SE(mod_cbps)[2]
+  cp_cbps <- as.numeric(confint(mod_cbps)[2,1] <= tau & confint(mod_cbps)[2,2] >= tau)
   
   # sent
   fit_sent <- cbalance(formula, data = dat, distance = "shifted", estimand = "ATE")
-  wts_sent <- fit_sent$weights
+  est_sent <- cestimate(fit_sent, Y = y, method = "sandwich")
+  tau_sent <- est_sent$tau
+  se_sent <- sqrt(est_sent$variance)
+  cp_sent <- as.numeric(tau_sent - se_sent*1.96 <= tau & tau_sent + se_sent*1.96 >= tau)
   
   # ate
-  fit_ate <- ATE(Y = dat$y, Ti = dat$z, X = cov_dat, theta = 0, ATT = FALSE)
-  wts_ate <- fit_ate$weights.p + fit_ate$weights.q
-
+  fit_ate <- ATE(Y = y, Ti = z, X = cov_dat, theta = 0, ATT = FALSE)
+  sate <- summary(fit_ate)$Estimate
+  tau_ate <- sate[3,1]
+  se_ate <- sate[3,2]
+  cp_ate <- as.numeric(sate[3,3] <= tau & sate[3,4] >= tau)
+    
   # ent
   fit_ent <- cbalance(formula, data = dat, distance = "entropy", estimand = "ATE")
-  wts_ent <- fit_ent$weights
+  est_ent <- cestimate(fit_ent, Y = y, method = "sandwich")
+  tau_ent <- est_ent$tau
+  se_ent <- sqrt(est_ent$variance)
+  cp_ent <- as.numeric(tau_ent - se_ent*1.96 <= tau & tau_ent + se_ent*1.96 >= tau)
   
   # bent
   fit_bent <- cbalance(formula, data = dat, distance = "binary", estimand = "ATE")
-  wts_bent <- fit_bent$weights
+  est_bent <- cestimate(fit_bent, Y = y, method = "sandwich")
+  tau_bent <- est_bent$tau
+  se_bent <- sqrt(est_bent$variance)
+  cp_bent <- as.numeric(tau_bent - se_bent*1.96 <= tau & tau_bent + se_bent*1.96 >= tau)
 
   # results
-  out <- as.data.frame(cbind(wts_cbps, wts_sent, wts_ate, wts_ent, wts_bent))
+  tauh <- c(tau_cbps, tau_sent, tau_ate, tau_ent, tau_bent)
+  seh <- c(se_cbps, se_sent, se_ate, se_ent, se_bent)
+  cph <- c(cp_cbps, cp_sent, cp_ate, cp_ent, cp_bent)
   
+  out <- list(tauh = tauh, seh = seh, cph = cph)
+    
   return(out)
-  
-}
-
-# wrapper for simEstimate()
-simPerf <- function(idx = 1, weightsList, simDat, tau, type = c("point", "se", "coverage")) {
-  
-  data <- as.data.frame(simDat[,idx])
-  work <- as.data.frame(weightsList[,idx])
-  formula <- y ~ z
-  
-  est_tmp <- lapply(work, simEstimate, formula = formula, data = data, tau = tau, type = type)
-  
-  est_out <- do.call(c, est_tmp)
-  names(est_out) <- names(work)
-  
-  return(est_out)
-  
-}
-
-# finds average causal effect estimates
-simEstimate <- function(formula, data, weights, tau, type = c("point", "se", "coverage")) {
-  
-  design <- svydesign(ids = ~ 1, weights = ~ weights, data = data.frame(weights, data))
-  fit <- svyglm(formula, design = design, family = gaussian)
-  
-  if (type == "se")
-    est <- SE(fit)[2]
-  else if (type == "coverage")
-    est <- as.numeric(confint(fit)[2,1] <= tau & confint(fit)[2,2] >= tau)
-  else # type = "point"
-    est <- coef(fit)[2]
-  
-  return(est)
   
 }
