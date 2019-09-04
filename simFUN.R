@@ -58,6 +58,67 @@ ks_data <- function(tau, n, sig2, rho, y_scen = c("a", "b"), z_scen = c("a", "b"
   
 }
 
+hte_data <- function(n, sig2, rho, y_scen = c("a", "b"), z_scen = c("a", "b")){
+  
+  # error variance
+  R <- matrix(rho, nrow = 2, ncol = 2)
+  diag(R) <- 1
+  V <- diag(sqrt(sig2), nrow = 2, ncol = 2)
+  Sig <- V %*% R %*% V
+  
+  # covariates
+  x1 <- stats::rnorm(n, 0, 1)
+  x2 <- stats::rnorm(n, 0, 1)
+  x3 <- stats::rnorm(n, 0, 1)
+  x4 <- stats::rnorm(n, 0, 1)
+  
+  # transformed predictors
+  u1 <- as.numeric(scale(exp(x1/2)))
+  u2 <- as.numeric(scale(x2/(1 + exp(x1)) + 10))
+  u3 <- as.numeric(scale((x1*x3/25 + 0.6)^3))
+  u4 <- as.numeric(scale((x2 + x4 + 20)^2))
+  
+  # effect coefficients
+  beta <- c(210, 27.4, 13.7, 13.7, 13.7)
+  gamma <- c(20, -13.7, -27.4, 27.4, 27.4)
+  
+  # propensity score
+  if (z_scen == "b") {
+    e_X <- 1/(1 + exp( -(-u1 + 0.5*u2 + 0.25*u3 - 0.1*u4 ) ) )
+  } else { # z_scen == "a"
+    e_X <- 1/(1 + exp( -(-x1 + 0.5*x2 + 0.25*x3 - 0.1*x4 ) ) )
+  }
+  
+  z <- rbinom(n, 1, e_X)
+  
+  if (y_scen == "b") {
+    X <- cbind(rep(1, times = n), u1, u2, u3, u4)
+  } else { # y_scen == "b"
+    X <- cbind(rep(1, times = n), x1, x2, x3, x4)
+  }
+  
+  # outcome mean
+  mu_0 <- X%*%beta
+  mu_1 <- X%*%(beta + gamma)
+  
+  tau <- t(apply(X[z == 1,], 2, mean)) %*% gamma
+  
+  # potential outcomes
+  eval <- eigen(Sig, symmetric = TRUE)
+  y_init <- matrix(stats::rnorm(n*2, 0, 1), nrow = n, ncol = 2) # iid potential outcomes
+  y_tmp <- t(eval$vectors %*% diag(sqrt(eval$values), nrow = 2) %*% t(y_init)) # SVD
+  y_pot <- y_tmp + cbind(mu_0, mu_1) # include causal effect
+  
+  # observed outcome
+  y <- z*y_pot[,2] + (1 - z)*y_pot[,1]
+  
+  # create simulation dataset
+  sim <- list(y = y, z = z, x1 = x1, x2 = x2, x3 = x3, x4 = x4)
+  
+  return(sim)
+  
+}
+
 # function for calculating inverse probabilty of treatment weights
 ipw <- function(ps, treat, estimand = c("ATE", "ATT"), standardize = TRUE) {
   
@@ -76,7 +137,7 @@ ipw <- function(ps, treat, estimand = c("ATE", "ATT"), standardize = TRUE) {
 }
 
 # Fits the balancing weights using a variety of methods
-simFit <- function(idx = 1, simDat, tau) {
+simFit_ATE <- function(idx = 1, simDat, tau) {
   
   dat <- simDat[,idx]
   formula <- as.formula(z ~ x1 + x2 + x3 + x4, env = environment(dat))
@@ -100,20 +161,6 @@ simFit <- function(idx = 1, simDat, tau) {
   se_sent <- sqrt(est_sent$variance)
   cp_sent <- as.numeric(tau_sent - se_sent*1.96 <= tau & tau_sent + se_sent*1.96 >= tau)
   
-  # ate
-  fit_ate <- ATE(Y = y, Ti = z, X = cov_dat, theta = 0, ATT = FALSE)
-  sate <- summary(fit_ate)$Estimate
-  tau_ate <- sate[3,1]
-  se_ate <- sate[3,2]
-  cp_ate <- as.numeric(sate[3,3] <= tau & sate[3,4] >= tau)
-    
-  # ent
-  fit_ent <- cbalance(formula, data = dat, distance = "entropy", estimand = "ATE")
-  est_ent <- cestimate(fit_ent, Y = y, method = "sandwich")
-  tau_ent <- est_ent$tau
-  se_ent <- sqrt(est_ent$variance)
-  cp_ent <- as.numeric(tau_ent - se_ent*1.96 <= tau & tau_ent + se_ent*1.96 >= tau)
-  
   # bent
   fit_bent <- cbalance(formula, data = dat, distance = "binary", estimand = "ATE")
   est_bent <- cestimate(fit_bent, Y = y, method = "sandwich")
@@ -129,5 +176,41 @@ simFit <- function(idx = 1, simDat, tau) {
   out <- list(tauh = tauh, seh = seh, cph = cph)
     
   return(out)
+  
+}
+
+simFit_HTE <- function(idx = 1, simDat, tau) {
+  
+  dat <- simDat[,idx]
+  formula <- as.formula(z ~ x1 + x2 + x3 + x4, env = environment(dat))
+  form_2 <- formula
+  form_2[[2]] <- NULL
+  cov_dat <- as.data.frame(dat[c("x1", "x2", "x3", "x4")])
+  y <- dat$y
+  z <- dat$z
+  
+  # ate
+  fit_ate <- ATE(Y = y, Ti = z, X = cov_dat, theta = 0, ATT = FALSE)
+  sate <- summary(fit_ate)$Estimate
+  tau_ate <- sate[3,1]
+  se_ate <- sate[3,2]
+  cp_ate <- as.numeric(sate[3,3] <= tau & sate[3,4] >= tau)
+  
+  #icbps
+  fit_icbps <- CBPS(formula, data = dat, ATT = 0, method = "exact", verbose = FALSE,
+                    diff.formula = form_2, baseline.formula = form_2)
+  wts_icbps <- fit_icbps$weights
+  design <- svydesign(ids = ~ 1, weights = ~ wts_cbps, data = data.frame(wts_icbps, dat))
+  mod_icbps <- svyglm(y ~ z, design = design, family = gaussian)
+  tau_icbps <- coef(mod_icbps)[2]
+  se_icbps <- SE(mod_icbps)[2]
+  cp_icbps <- as.numeric(confint(mod_icbps)[2,1] <= tau & confint(mod_icbps)[2,2] >= tau)
+  
+  # sent
+  fit_sent <- cbalance(formula, data = dat, distance = "shifted", estimand = "ATE")
+  est_sent <- cestimate(fit_sent, Y = y, method = "sandwich")
+  tau_sent <- est_sent$tau
+  se_sent <- sqrt(est_sent$variance)
+  cp_sent <- as.numeric(tau_sent - se_sent*1.96 <= tau & tau_sent + se_sent*1.96 >= tau)
   
 }
