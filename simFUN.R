@@ -145,11 +145,21 @@ simFit_ATE <- function(idx = 1, simDat, tau) {
   y <- dat$y
   z <- dat$z
   
+  # ipw
+  fit_glm <- glm(formula, data = dat, family = binomial(link = "logit"))
+  ps <- predict(fit_glm, type = "response")
+  wts_glm <- ipw(ps, treat = z, estimand = "ATE", standardize = FALSE)
+  design_glm <- svydesign(ids = ~ 1, weights = ~ wts_glm, data = data.frame(wts_glm, dat))
+  mod_glm <- svyglm(y ~ z, design = design_glm, family = gaussian)
+  tau_glm <- coef(mod_glm)[2]
+  se_glm <- SE(mod_glm)[2]
+  cp_glm <- as.numeric(confint(mod_glm)[2,1] <= tau & confint(mod_glm)[2,2] >= tau)
+  
   # cbps
   fit_cbps <- CBPS(formula, data = dat, ATT = 0, method = "exact", verbose = FALSE)
   wts_cbps <- fit_cbps$weights
-  design <- svydesign(ids = ~ 1, weights = ~ wts_cbps, data = data.frame(wts_cbps, dat))
-  mod_cbps <- svyglm(y ~ z, design = design, family = gaussian)
+  design_cbps <- svydesign(ids = ~ 1, weights = ~ wts_cbps, data = data.frame(wts_cbps, dat))
+  mod_cbps <- svyglm(y ~ z, design = design_cbps, family = gaussian)
   tau_cbps <- coef(mod_cbps)[2]
   se_cbps <- SE(mod_cbps)[2]
   cp_cbps <- as.numeric(confint(mod_cbps)[2,1] <= tau & confint(mod_cbps)[2,2] >= tau)
@@ -169,9 +179,9 @@ simFit_ATE <- function(idx = 1, simDat, tau) {
   cp_bent <- as.numeric(tau_bent - se_bent*1.96 <= tau & tau_bent + se_bent*1.96 >= tau)
 
   # results
-  tauh <- c(tau_cbps, tau_sent, tau_ate, tau_ent, tau_bent)
-  seh <- c(se_cbps, se_sent, se_ate, se_ent, se_bent)
-  cph <- c(cp_cbps, cp_sent, cp_ate, cp_ent, cp_bent)
+  tauh <- c(tau_glm, tau_cbps, tau_sent, tau_bent)
+  seh <- c(se_glm, se_cbps, se_sent, se_bent)
+  cph <- c(cp_glm, cp_cbps, cp_sent, cp_bent)
   
   out <- list(tauh = tauh, seh = seh, cph = cph)
     
@@ -183,9 +193,9 @@ simFit_HTE <- function(idx = 1, simDat, tau) {
   
   dat <- simDat[,idx]
   formula <- as.formula(z ~ x1 + x2 + x3 + x4, env = environment(dat))
-  form_2 <- formula
-  form_2[[2]] <- NULL
   cov_dat <- as.data.frame(dat[c("x1", "x2", "x3", "x4")])
+  X <- as.matrix(cov_dat)
+  form_2 <- as.formula(~ X)
   y <- dat$y
   z <- dat$z
   
@@ -197,20 +207,29 @@ simFit_HTE <- function(idx = 1, simDat, tau) {
   cp_ate <- as.numeric(sate[3,3] <= tau & sate[3,4] >= tau)
   
   #icbps
-  fit_icbps <- CBPS(formula, data = dat, ATT = 0, method = "exact", verbose = FALSE,
+  fit_icbps <- CBPS(formula, data = dat, ATT = FALSE, method = "exact", verbose = FALSE, 
                     diff.formula = form_2, baseline.formula = form_2)
   wts_icbps <- fit_icbps$weights
-  design <- svydesign(ids = ~ 1, weights = ~ wts_cbps, data = data.frame(wts_icbps, dat))
+  design <- svydesign(ids = ~ 1, weights = ~ wts_icbps, data = data.frame(wts_icbps, dat))
   mod_icbps <- svyglm(y ~ z, design = design, family = gaussian)
   tau_icbps <- coef(mod_icbps)[2]
   se_icbps <- SE(mod_icbps)[2]
   cp_icbps <- as.numeric(confint(mod_icbps)[2,1] <= tau & confint(mod_icbps)[2,2] >= tau)
   
   # sent
-  fit_sent <- cbalance(formula, data = dat, distance = "shifted", estimand = "ATE")
+  fit_sent <- cbalance(formula, data = dat, distance = "shifted", estimand = "HTE")
   est_sent <- cestimate(fit_sent, Y = y, method = "sandwich")
   tau_sent <- est_sent$tau
   se_sent <- sqrt(est_sent$variance)
   cp_sent <- as.numeric(tau_sent - se_sent*1.96 <= tau & tau_sent + se_sent*1.96 >= tau)
+  
+  # results
+  tauh <- c(tau_ate, tau_icbps, tau_sent)
+  seh <- c(se_ate, se_icbps, se_sent)
+  cph <- c(cp_ate, cp_icbps, cp_sent)
+  
+  out <- list(tauh = tauh, seh = seh, cph = cph)
+  
+  return(out)
   
 }

@@ -8,15 +8,15 @@ library(gridExtra)
 
 ### Kang and Schafer results
 
-dir_1 <- "~/Dropbox (ColoradoTeam)/JoseyDissertation/Data/cbal/tauHat/"
-dir_2 <- "~/Dropbox (ColoradoTeam)/JoseyDissertation/Data/cbal/tauSE/"
-dir_3 <- "~/Dropbox (ColoradoTeam)/JoseyDissertation/Data/cbal/coverageProb/"
+dir_1 <- "D:/Dropbox (ColoradoTeam)/JoseyDissertation/Data/cbal/ATE/tauHat/"
+dir_2 <- "D:/Dropbox (ColoradoTeam)/JoseyDissertation/Data/cbal/ATE/tauSE/"
+dir_3 <- "D:/Dropbox (ColoradoTeam)/JoseyDissertation/Data/cbal/ATE/coverageProb/"
 
 files <- list.files(dir_1)
-out_1 <- out_2 <- out_3 <- matrix("", nrow = length(files), ncol = 11)
+out_1 <- out_2 <- out_3 <- matrix("", nrow = length(files), ncol = 10)
 
 colnames(out_1) <- colnames(out_2) <- colnames(out_3) <- 
-  c("tau", "n", "variance", "correlation", "y_scen", "z_scen", "CBPS", "SENT", "CAL", "ENT", "BENT")
+  c("tau", "n", "variance", "correlation", "y_scen", "z_scen", "IPW", "CBPS", "SENT", "BENT")
 
 j <- 1
 
@@ -59,7 +59,7 @@ for (fdx in files) {
 
 # plot outcomes
 
-load("~/Dropbox (ColoradoTeam)/JoseyDissertation/Data/cbal/tauHat/_200_10_0_a_a_.RData")
+load("D:/Dropbox (ColoradoTeam)/JoseyDissertation/Data/cbal/ATE/tauHat/_200_10_0_a_a_.RData")
 dat1 <- stack(as.data.frame(tauHat[,7:ncol(tauHat)]))
 dat1$ind <- factor(dat1$ind, labels = c("CBPS", "SENT", "CAL", "ENT", "BENT"))
 p1 <- ggplot(dat1) + 
@@ -72,7 +72,7 @@ p1 <- ggplot(dat1) +
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5))
 
-load("~/Dropbox (ColoradoTeam)/JoseyDissertation/Data/cbal/tauHat/_200_10_0_a_b_.RData")
+load("D:/Dropbox (ColoradoTeam)/JoseyDissertation/Data/cbal/ATE/tauHat/_200_10_0_a_b_.RData")
 dat2 <- stack(as.data.frame(tauHat[,7:ncol(tauHat)]))
 dat2$ind <- factor(dat2$ind, labels = c("CBPS", "SENT", "CAL", "ENT", "BENT"))
 p2 <- ggplot(dat2) + 
@@ -85,7 +85,7 @@ p2 <- ggplot(dat2) +
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5))
 
-load("~/Dropbox (ColoradoTeam)/JoseyDissertation/Data/cbal/tauHat/_200_10_0_b_a_.RData")
+load("D:/Dropbox (ColoradoTeam)/JoseyDissertation/Data/cbal/ATE/tauHat/_200_10_0_b_a_.RData")
 dat3 <- stack(as.data.frame(tauHat[,7:ncol(tauHat)]))
 dat3$ind <- factor(dat3$ind, labels = c("CBPS", "SENT", "CAL", "ENT", "BENT"))
 p3 <- ggplot(dat3) + 
@@ -98,7 +98,7 @@ p3 <- ggplot(dat3) +
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5))
 
-load("~/Dropbox (ColoradoTeam)/JoseyDissertation/Data/cbal/tauHat/_200_10_0_b_b_.RData")
+load("D:/Dropbox (ColoradoTeam)/JoseyDissertation/Data/cbal/ATE/tauHat/_200_10_0_b_b_.RData")
 dat4 <- stack(as.data.frame(tauHat[,7:ncol(tauHat)]))
 dat4$ind <- factor(dat4$ind, labels = c("CBPS", "SENT", "CAL", "ENT", "BENT"))
 p4 <- ggplot(dat4) + 
@@ -111,7 +111,7 @@ p4 <- ggplot(dat4) +
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5))
   
-png("~/Dropbox (ColoradoTeam)/JoseyDissertation/Output/cbal/Figures/ATE_plot.png", 
+png("D:/Dropbox (ColoradoTeam)/JoseyDissertation/Output/cbal/Figures/ATE_plot.png", 
     width = 1000, 
     height = 1000,
     res = 100, 
@@ -144,9 +144,9 @@ out_3.tmp$variance <- as.numeric(out_3.tmp$variance)
 out_3.tmp$correlation <- as.numeric(out_3.tmp$correlation)
 out_3.tmp <- out_3.tmp[order(out_3.tmp$n, out_3.tmp$variance, out_3.tmp$correlation, out_3.tmp$y_scen, out_3.tmp$z_scen),]
   
-filename1 <- "~/Dropbox (ColoradoTeam)/JoseyDissertation/Output/cbal/Tables/estimates.csv"
-filename2 <- "~/Dropbox (ColoradoTeam)/JoseyDissertation/Output/cbal/Tables/coverageProbs.csv"
-filename3 <- "~/Dropbox (ColoradoTeam)/JoseyDissertation/Output/cbal/Tables/mse_bias.csv"
+filename1 <- "D:/Dropbox (ColoradoTeam)/JoseyDissertation/Output/cbal/Tables/estimates_ATE.csv"
+filename2 <- "D:/Dropbox (ColoradoTeam)/JoseyDissertation/Output/cbal/Tables/coverageProbs_ATE.csv"
+filename3 <- "D:/Dropbox (ColoradoTeam)/JoseyDissertation/Output/cbal/Tables/mse_bias_ATE.csv"
 
 write.csv(out_1.tmp, file = filename1)
 write.csv(out_2.tmp, file = filename2)
