@@ -141,7 +141,6 @@ simFit_ATE <- function(idx = 1, simDat, tau) {
   
   dat <- simDat[,idx]
   formula <- as.formula(z ~ x1 + x2 + x3 + x4, env = environment(dat))
-  cov_dat <- as.data.frame(dat[c("x1", "x2", "x3", "x4")])
   y <- dat$y
   z <- dat$z
   
@@ -193,14 +192,14 @@ simFit_HTE <- function(idx = 1, simDat, tau) {
   
   dat <- simDat[,idx]
   formula <- as.formula(z ~ x1 + x2 + x3 + x4, env = environment(dat))
-  cov_dat <- as.data.frame(dat[c("x1", "x2", "x3", "x4")])
+  cov_dat <- data.frame(int = 1, dat[c("x1", "x2", "x3", "x4")])
   X <- as.matrix(cov_dat)
   form_2 <- as.formula(~ X)
   y <- dat$y
   z <- dat$z
   
   # ate
-  fit_ate <- ATE(Y = y, Ti = z, X = cov_dat, theta = 0, ATT = FALSE)
+  fit_ate <- ATE(Y = y, Ti = z, X = cov_dat[,-1], theta = 0, ATT = FALSE)
   sate <- summary(fit_ate)$Estimate
   tau_ate <- sate[3,1]
   se_ate <- sate[3,2]
