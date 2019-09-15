@@ -14,14 +14,14 @@ library(ATE)
 library(cbal)
 
 # additional functions
-source("~/Github/cbal-sim/simFUN.R")
+source("D:/Github/cbal-sim/simFUN.R")
 
 iter <- 100
 n <- 200
 rho <- -0.3
 sig2 <- 5
-y_scen <- "a"
-z_scen <- "a"
+y_scen <- "b"
+z_scen <- "b"
 tau <- 20
 
 # Kang and Schafer

@@ -6,7 +6,7 @@
 # dependencies
 library(snow)
 
-set.seed(1992)
+set.seed(06261992)
 
 ### Kang and Schafer scenarios
 
@@ -29,7 +29,7 @@ index <- index[!(index %in% remove)]
 iter <- 1000
 
 ## multicore simulation
-cl <- makeCluster(3, type = "SOCK")
+cl <- makeCluster(6, type = "SOCK")
 
 clusterEvalQ(cl, {
   
@@ -105,6 +105,8 @@ stop <- Sys.time()
 stop - start
 
 ### HTE scenarios
+
+set.seed(07271989)
 
 n <- c(200, 1000)
 rho <- c(-0.3, 0, 0.5)

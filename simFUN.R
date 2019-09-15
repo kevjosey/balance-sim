@@ -80,7 +80,7 @@ hte_data <- function(n, sig2, rho, y_scen = c("a", "b"), z_scen = c("a", "b")){
   
   # effect coefficients
   beta <- c(210, 27.4, 13.7, 13.7, 13.7)
-  gamma <- c(20, -13.7, -27.4, 27.4, 27.4)
+  gamma <- c(20, 13.7, 27.4, -27.4, -27.4)
   
   # propensity score
   if (z_scen == "b") {
