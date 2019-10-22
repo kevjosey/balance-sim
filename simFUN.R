@@ -3,11 +3,6 @@
 ## PURPOSE: Functions for simulating and fitting causal models  ##
 ##################################################################
 
-require(cbal)
-require(CBPS)
-require(ATE)
-require(survey)
-
 # simulate scenarios
 ks_data <- function(tau, n, sig2, rho, y_scen = c("a", "b"), z_scen = c("a", "b")) {
   
@@ -52,7 +47,7 @@ ks_data <- function(tau, n, sig2, rho, y_scen = c("a", "b"), z_scen = c("a", "b"
   y <- z*y_pot[,2] + (1 - z)*y_pot[,1]
   
   # create simulation dataset
-  sim <- as.data.frame(cbind(y, z, x1, x2, x3, x4, u1, u2, u3, u4))
+  sim <- as.data.frame(cbind(y, z, x1, x2, x3, x4))
   
   return(sim)
   
@@ -80,13 +75,13 @@ hte_data <- function(n, sig2, rho, y_scen = c("a", "b"), z_scen = c("a", "b")){
   
   # effect coefficients
   beta <- c(210, 27.4, 13.7, 13.7, 13.7)
-  gamma <- c(20, 13.7, 27.4, -27.4, -27.4)
+  gamma <- c(20, -13.7, 0, 0, 13.7)
   
   # propensity score
   if (z_scen == "b") {
-    e_X <- 1/(1 + exp( -(-u1 + 0.5*u2 + 0.25*u3 - 0.1*u4 ) ) )
+    e_X <- 1/(1 + exp( -(-u1 + 0.5*u2 - 0.25*u3 - 0.1*u4 ) ) )
   } else { # z_scen == "a"
-    e_X <- 1/(1 + exp( -(-x1 + 0.5*x2 + 0.25*x3 - 0.1*x4 ) ) )
+    e_X <- 1/(1 + exp( -(-x1 + 0.5*x2 - 0.25*x3 - 0.1*x4 ) ) )
   }
   
   z <- rbinom(n, 1, e_X)
@@ -141,13 +136,13 @@ simFit_ATE <- function(idx = 1, simDat, tau) {
   
   dat <- simDat[,idx]
   formula <- as.formula(z ~ x1 + x2 + x3 + x4, env = environment(dat))
-  y <- dat$y
-  z <- dat$z
+  Y <- dat$y
+  Z <- dat$z
   
   # ipw
   fit_glm <- glm(formula, data = dat, family = binomial(link = "logit"))
   ps <- predict(fit_glm, type = "response")
-  wts_glm <- ipw(ps, treat = z, estimand = "ATE", standardize = FALSE)
+  wts_glm <- ipw(ps, treat = Z, estimand = "ATE", standardize = FALSE)
   design_glm <- svydesign(ids = ~ 1, weights = ~ wts_glm, data = data.frame(wts_glm, dat))
   mod_glm <- svyglm(y ~ z, design = design_glm, family = gaussian)
   tau_glm <- coef(mod_glm)[2]
@@ -164,15 +159,15 @@ simFit_ATE <- function(idx = 1, simDat, tau) {
   cp_cbps <- as.numeric(confint(mod_cbps)[2,1] <= tau & confint(mod_cbps)[2,2] >= tau)
   
   # sent
-  fit_sent <- cbalance(formula, data = dat, distance = "shifted", estimand = "ATE")
-  est_sent <- cestimate(fit_sent, Y = y, method = "sandwich")
+  fit_sent <- cbalance(formula, data = dat, distance = "shifted")
+  est_sent <- cestimate(fit_sent, Y = Y, method = "sandwich")
   tau_sent <- est_sent$tau
   se_sent <- sqrt(est_sent$variance)
   cp_sent <- as.numeric(tau_sent - se_sent*1.96 <= tau & tau_sent + se_sent*1.96 >= tau)
   
   # bent
-  fit_bent <- cbalance(formula, data = dat, distance = "binary", estimand = "ATE")
-  est_bent <- cestimate(fit_bent, Y = y, method = "sandwich")
+  fit_bent <- cbalance(formula, data = dat, distance = "binary")
+  est_bent <- cestimate(fit_bent, Y = Y, method = "sandwich")
   tau_bent <- est_bent$tau
   se_bent <- sqrt(est_bent$variance)
   cp_bent <- as.numeric(tau_bent - se_bent*1.96 <= tau & tau_bent + se_bent*1.96 >= tau)
@@ -190,24 +185,39 @@ simFit_ATE <- function(idx = 1, simDat, tau) {
 
 simFit_HTE <- function(idx = 1, simDat, tau) {
   
-  dat <- simDat[,idx]
+  dat <- as.data.frame(simDat[,idx])
   formula <- as.formula(z ~ x1 + x2 + x3 + x4, env = environment(dat))
-  cov_dat <- data.frame(int = 1, dat[c("x1", "x2", "x3", "x4")])
+  outform <- as.formula(y ~ x1 + x2 + x3 + x4, env = environment(dat))
+  cov_dat <- data.frame(dat[c("x1", "x2", "x3", "x4")])
   X <- as.matrix(cov_dat)
-  form_2 <- as.formula(~ X)
-  y <- dat$y
-  z <- dat$z
+  Y <- dat$y
+  Z <- dat$z
+  inform <- as.formula(~ X)
+  
+  # aipw
+  out <- ps <- matrix(nrow = nrow(X), ncol = 2)
+  fit_0 <- lm(outform, data = dat[Z == 0,])
+  fit_1 <- lm(outform, data = dat[Z == 1,])
+  out[,1] <- predict(fit_0, newdata = dat)
+  out[,2] <- predict(fit_1, newdata = dat)
+  fit_ps <- glm(formula, data = dat, family = binomial(link = "logit"))
+  ps[,1] <- 1 - predict(fit_ps, type = "response")
+  ps[,2] <- predict(fit_ps, type = "response")
+  fit_aipw <- ate.aipw(y = Y, tr = Z, mfp = ps, mfo = out)
+  tau_aipw <- fit_aipw$diff.est[2]
+  se_aipw <- sqrt(fit_aipw$diff.var[2])
+  cp_aipw <- tau_aipw - se_aipw*1.96 <= tau & tau_aipw + se_aipw*1.96 >= tau
   
   # ate
-  fit_ate <- ATE(Y = y, Ti = z, X = cov_dat[,-1], theta = 0, ATT = FALSE)
+  fit_ate <- ATE(Y = Y, Ti = Z, X = cov_dat, theta = 0, ATT = FALSE)
   sate <- summary(fit_ate)$Estimate
   tau_ate <- sate[3,1]
   se_ate <- sate[3,2]
   cp_ate <- as.numeric(sate[3,3] <= tau & sate[3,4] >= tau)
   
-  #icbps
+  # icbps
   fit_icbps <- CBPS(formula, data = dat, ATT = FALSE, method = "exact", verbose = FALSE, 
-                    diff.formula = form_2, baseline.formula = form_2)
+                    diff.formula = inform, baseline.formula = inform)
   wts_icbps <- fit_icbps$weights
   design <- svydesign(ids = ~ 1, weights = ~ wts_icbps, data = data.frame(wts_icbps, dat))
   mod_icbps <- svyglm(y ~ z, design = design, family = gaussian)
@@ -215,17 +225,23 @@ simFit_HTE <- function(idx = 1, simDat, tau) {
   se_icbps <- SE(mod_icbps)[2]
   cp_icbps <- as.numeric(confint(mod_icbps)[2,1] <= tau & confint(mod_icbps)[2,2] >= tau)
   
+  # hdcbps
+  fit_hdcbps <- hdCBPS(formula, data = dat, y = Y, ATT = 0, method = "linear")
+  tau_hdcbps <- fit_hdcbps$ATE
+  se_hdcbps <- fit_hdcbps$s
+  cp_hdcbps <- as.numeric(tau_hdcbps - se_hdcbps*1.96 <= tau & tau_hdcbps + se_hdcbps*1.96 >= tau)
+  
   # sent
-  fit_sent <- cbalance(formula, data = dat, distance = "shifted", estimand = "HTE")
-  est_sent <- cestimate(fit_sent, Y = y, method = "sandwich")
+  fit_sent <- cbalance(formula, data = dat, distance = "shifted")
+  est_sent <- cestimate(fit_sent, Y = Y, method = "sandwich")
   tau_sent <- est_sent$tau
   se_sent <- sqrt(est_sent$variance)
   cp_sent <- as.numeric(tau_sent - se_sent*1.96 <= tau & tau_sent + se_sent*1.96 >= tau)
   
   # results
-  tauh <- c(tau_ate, tau_icbps, tau_sent)
-  seh <- c(se_ate, se_icbps, se_sent)
-  cph <- c(cp_ate, cp_icbps, cp_sent)
+  tauh <- c(tau_aipw, tau_ate, tau_icbps, tau_hdcbps, tau_sent)
+  seh <- c(se_aipw, se_ate, se_icbps, se_hdcbps, se_sent)
+  cph <- c(cp_aipw, cp_ate, cp_icbps, cp_hdcbps, cp_sent)
   
   out <- list(tauh = tauh, seh = seh, cph = cph)
   

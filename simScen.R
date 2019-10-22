@@ -6,8 +6,6 @@
 # dependencies
 library(snow)
 
-set.seed(06261992)
-
 ### Kang and Schafer scenarios
 
 n <- c(200, 1000)
@@ -29,7 +27,7 @@ index <- index[!(index %in% remove)]
 iter <- 1000
 
 ## multicore simulation
-cl <- makeCluster(6, type = "SOCK")
+cl <- makeCluster(3, type = "SOCK")
 
 clusterEvalQ(cl, {
   
@@ -40,6 +38,8 @@ clusterEvalQ(cl, {
   
   # additional functions
   source("D:/Github/cbal-sim/simFUN.R")
+  
+  set.seed(06261992)
 
 })
 
@@ -106,8 +106,6 @@ stop - start
 
 ### HTE scenarios
 
-set.seed(07271989)
-
 n <- c(200, 1000)
 rho <- c(-0.3, 0, 0.5)
 sig2 <- c(2, 5, 10)
@@ -127,7 +125,7 @@ index <- index[!(index %in% remove)]
 iter <- 1000
 
 ## multicore simulation
-cl <- makeCluster(6, type = "SOCK")
+cl <- makeCluster(3, type = "SOCK")
 
 clusterEvalQ(cl, {
   
@@ -135,10 +133,13 @@ clusterEvalQ(cl, {
   library(cbal)
   library(CBPS)
   library(ATE)
+  library(RCAL)
   library(survey)
   
   # additional functions
   source("D:/Github/cbal-sim/simFUN.R")
+  
+  set.seed(07271989)
   
 })
 
@@ -179,7 +180,7 @@ clusterApply(cl, index, function(i,...) {
   tauHat_tmp <- do.call(rbind, estList[1,])
   tauSE_tmp <- do.call(rbind, estList[2,])
   coverageProb_tmp <- do.call(rbind, estList[3,])
-  colnames(tauHat_tmp) <- colnames(tauSE_tmp) <- colnames(coverageProb_tmp) <- c("CAL", "iCBPS", "SENT")
+  colnames(tauHat_tmp) <- colnames(tauSE_tmp) <- colnames(coverageProb_tmp) <- c("AIPW", "CAL", "iCBPS", "hdCBPS", "SENT")
   
   tauHat <- data.frame(misc_out, tauHat_tmp, stringsAsFactors = FALSE)
   tauSE <- data.frame(misc_out, tauSE_tmp, stringsAsFactors = FALSE)

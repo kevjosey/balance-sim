@@ -12,6 +12,7 @@ library(survey)
 library(CBPS)
 library(ATE)
 library(cbal)
+library(RCAL)
 
 # additional functions
 source("D:/Github/cbal-sim/simFUN.R")
@@ -21,7 +22,7 @@ n <- 200
 rho <- -0.3
 sig2 <- 5
 y_scen <- "b"
-z_scen <- "b"
+z_scen <- "a"
 tau <- 20
 
 # Kang and Schafer
