@@ -1,5 +1,5 @@
 ###############################################################
-## TITLE: simOut.R                                           ##     
+## TITLE: output.R                                           ##     
 ## PURPOSE: Construction of tables and plots from outputs    ##
 ###############################################################
 
