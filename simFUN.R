@@ -159,15 +159,15 @@ simFit_ATE <- function(idx = 1, simDat, tau) {
   cp_cbps <- as.numeric(confint(mod_cbps)[2,1] <= tau & confint(mod_cbps)[2,2] >= tau)
   
   # sent
-  fit_sent <- balance(formula, data = dat, distance = "shifted")
-  est_sent <- estimate(fit_sent, Y = Y, method = "sandwich")
+  fit_sent <- balance(formula, data = dat, estimand = "ATE")
+  est_sent <- estimate(fit_sent, Y = Y)
   tau_sent <- est_sent$tau
   se_sent <- sqrt(est_sent$variance)
   cp_sent <- as.numeric(tau_sent - se_sent*1.96 <= tau & tau_sent + se_sent*1.96 >= tau)
   
   # bent
-  fit_bent <- balance(formula, data = dat, distance = "binary")
-  est_bent <- estimate(fit_bent, Y = Y, method = "sandwich")
+  fit_bent <- balance(formula, data = dat, estimand = "OWATE")
+  est_bent <- estimate(fit_bent, Y = Y)
   tau_bent <- est_bent$tau
   se_bent <- sqrt(est_bent$variance)
   cp_bent <- as.numeric(tau_bent - se_bent*1.96 <= tau & tau_bent + se_bent*1.96 >= tau)
@@ -232,8 +232,8 @@ simFit_HTE <- function(idx = 1, simDat, tau) {
   cp_hdcbps <- as.numeric(tau_hdcbps - se_hdcbps*1.96 <= tau & tau_hdcbps + se_hdcbps*1.96 >= tau)
   
   # sent
-  fit_sent <- balance(formula, data = dat, distance = "shifted")
-  est_sent <- estimate(fit_sent, Y = Y, method = "sandwich")
+  fit_sent <- balance(formula, data = dat, estimand = "ATE")
+  est_sent <- estimate(fit_sent, Y = Y)
   tau_sent <- est_sent$tau
   se_sent <- sqrt(est_sent$variance)
   cp_sent <- as.numeric(tau_sent - se_sent*1.96 <= tau & tau_sent + se_sent*1.96 >= tau)
