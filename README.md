@@ -14,9 +14,9 @@ Below is an itemized list of the different R scripts within this repository:
 
 Bang, H., & Robins, J. M. (2005). Doubly robust estimation in missing data and causal inference models. Biometrics, 61(4), 962-973.
 
-Imai, K., & Ratkovic, M. (2014). Covariate balancing propensity score. Journal of the Royal Statistical Society Series B: Statistical Methodology, 76(1), 243-263.
-
 Hainmueller, J. (2012). Entropy balancing for causal effects: A multivariate reweighting method to produce balanced samples in observational studies. Political analysis, 20(1), 25-46.
+
+Imai, K., & Ratkovic, M. (2014). Covariate balancing propensity score. Journal of the Royal Statistical Society Series B: Statistical Methodology, 76(1), 243-263.
 
 Josey, K. P., Juarez‐Colunga, E., Yang, F., & Ghosh, D. (2021). A framework for covariate balance using Bregman distances. Scandinavian Journal of Statistics, 48(3), 790-816.
 
